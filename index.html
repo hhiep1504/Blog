@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Blog - Trang chủ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Libre Baskerville', serif;
+            line-height: 1.7;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #2d2d2d;
+            background-color: #fffce8;
+            font-size: 14px;
+        }
+
+        .container {
+            background-color: #fffce8;
+            margin: 0 auto;
+            max-width: 650px;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #d3c6a6;
+            text-align: center;
+        }
+
+        header h1 {
+            margin-bottom: 1rem;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: #483c32;
+        }
+
+        .header-ornament {
+            display: block;
+            margin: 1rem auto;
+            font-size: 1.5rem;
+            color: #927e5a;
+        }
+
+        .tagline {
+            font-style: italic;
+            color: #927e5a;
+            font-size: 0.95rem;
+        }
+
+        /* Search box */
+        .search-container {
+            margin: 2rem 0 3rem 0;
+            text-align: center;
+        }
+
+        .search-box {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.8rem 1rem;
+            font-family: 'Libre Baskerville', serif;
+            font-size: 0.95rem;
+            border: 2px solid #d3c6a6;
+            background: #fffef5;
+            color: #2d2d2d;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #927e5a;
+        }
+
+        .search-box::placeholder {
+            color: #927e5a;
+            opacity: 0.6;
+        }
+
+        /* Posts list */
+        .posts-list {
+            margin-top: 2rem;
+        }
+
+        .post-item {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e8dfc8;
+            transition: opacity 0.3s;
+        }
+
+        .post-item.hidden {
+            display: none;
+        }
+
+        .post-item h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #483c32;
+        }
+
+        .post-item h2 a {
+            color: #483c32;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .post-item h2 a:hover {
+            border-bottom-color: #927e5a;
+        }
+
+        .post-meta {
+            font-size: 0.85rem;
+            color: #927e5a;
+            margin-bottom: 0.8rem;
+            font-style: italic;
+        }
+
+        .post-excerpt {
+            line-height: 1.8;
+            color: #2d2d2d;
+            margin-bottom: 1rem;
+        }
+
+        .read-more {
+            color: #268bd2;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(107, 91, 53, 0.3);
+            transition: all 0.2s;
+        }
+
+        .read-more:hover {
+            color: #4a3f24;
+            border-bottom-color: rgba(74, 63, 36, 0.7);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #927e5a;
+            font-style: italic;
+            display: none;
+        }
+
+        .no-results.show {
+            display: block;
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid #d3c6a6;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #927e5a;
+        }
+
+        .footer-ornament {
+            margin: 1rem auto;
+            font-size: 1.2rem;
+            color: #927e5a;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+                font-size: 15px;
+            }
+
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .search-box {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>My Blog</h1>
+            <span class="header-ornament">❦</span>
+            <p class="tagline">Chia sẻ kiến thức và suy nghĩ</p>
+        </header>
+
+        <div class="search-container">
+            <input 
+                type="text" 
+                class="search-box" 
+                id="searchInput" 
+                placeholder="Tìm kiếm bài viết..."
+            >
+        </div>
+
+        <div class="posts-list" id="postsList">
+            <!-- Post 1 -->
+            <article class="post-item" data-title="Giới thiệu về Machine Learning" data-content="machine learning ai trí tuệ nhân tạo học máy neural network">
+                <h2><a href="posts/post1.html">Giới thiệu về Machine Learning</a></h2>
+                <div class="post-meta">20 Tháng 1, 2026 • 5 phút đọc</div>
+                <p class="post-excerpt">
+                    Machine Learning là một nhánh của trí tuệ nhân tạo, cho phép máy tính học 
+                    từ dữ liệu mà không cần được lập trình cụ thể. Bài viết này sẽ giới thiệu 
+                    những khái niệm cơ bản và ứng dụng thực tế.
+                </p>
+                <a href="posts/post1.html" class="read-more">Đọc tiếp →</a>
+            </article>
+
+            <!-- Post 2 -->
+            <article class="post-item" data-title="CSS Grid vs Flexbox" data-content="css grid flexbox layout web design">
+                <h2><a href="posts/post2.html">CSS Grid vs Flexbox: Khi nào dùng cái nào?</a></h2>
+                <div class="post-meta">18 Tháng 1, 2026 • 8 phút đọc</div>
+                <p class="post-excerpt">
+                    So sánh chi tiết giữa CSS Grid và Flexbox, hai công cụ mạnh mẽ để tạo 
+                    layout trong web design. Tìm hiểu ưu nhược điểm và khi nào nên sử dụng 
+                    từng loại.
+                </p>
+                <a href="posts/post2.html" class="read-more">Đọc tiếp →</a>
+            </article>
+
+            <!-- Post 3 -->
+            <article class="post-item" data-title="Python cho người mới bắt đầu" data-content="python lập trình programming beginner tutorial">
+                <h2><a href="posts/post3.html">Python cho người mới bắt đầu</a></h2>
+                <div class="post-meta">15 Tháng 1, 2026 • 10 phút đọc</div>
+                <p class="post-excerpt">
+                    Hướng dẫn cơ bản về Python - ngôn ngữ lập trình dễ học, mạnh mẽ và được 
+                    yêu thích nhất hiện nay. Từ cài đặt đến viết chương trình đầu tiên.
+                </p>
+                <a href="posts/post3.html" class="read-more">Đọc tiếp →</a>
+            </article>
+
+            <!-- Post 4 -->
+            <article class="post-item" data-title="Git và GitHub cơ bản" data-content="git github version control code collaboration">
+                <h2><a href="posts/post4.html">Git và GitHub: Quản lý code hiệu quả</a></h2>
+                <div class="post-meta">12 Tháng 1, 2026 • 7 phút đọc</div>
+                <p class="post-excerpt">
+                    Tìm hiểu về Git và GitHub - công cụ không thể thiếu cho mọi lập trình viên. 
+                    Hướng dẫn từ cơ bản đến nâng cao về version control và collaboration.
+                </p>
+                <a href="posts/post4.html" class="read-more">Đọc tiếp →</a>
+            </article>
+
+            <!-- Post 5 -->
+            <article class="post-item" data-title="Responsive Web Design" data-content="responsive web design mobile first css media queries">
+                <h2><a href="posts/post5.html">Responsive Web Design: Mobile First</a></h2>
+                <div class="post-meta">10 Tháng 1, 2026 • 6 phút đọc</div>
+                <p class="post-excerpt">
+                    Thiết kế website responsive để hoạt động tốt trên mọi thiết bị. Tìm hiểu 
+                    về Mobile First approach và các kỹ thuật CSS quan trọng.
+                </p>
+                <a href="posts/post5.html" class="read-more">Đọc tiếp →</a>
+            </article>
+        </div>
+
+        <div class="no-results" id="noResults">
+            Không tìm thấy bài viết nào phù hợp 😔
+        </div>
+
+        <footer>
+            <div class="footer-ornament">❦</div>
+            <p>© 2026 My Blog • Made with ♥</p>
+        </footer>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const postsList = document.getElementById('postsList');
+        const noResults = document.getElementById('noResults');
+        const postItems = document.querySelectorAll('.post-item');
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            postItems.forEach(post => {
+                const title = post.getAttribute('data-title').toLowerCase();
+                const content = post.getAttribute('data-content').toLowerCase();
+                const excerpt = post.querySelector('.post-excerpt').textContent.toLowerCase();
+                
+                const isMatch = title.includes(searchTerm) || 
+                               content.includes(searchTerm) || 
+                               excerpt.includes(searchTerm);
+
+                if (isMatch || searchTerm === '') {
+                    post.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    post.classList.add('hidden');
+                }
+            });
+
+            if (visibleCount === 0 && searchTerm !== '') {
+                noResults.classList.add('show');
+            } else {
+                noResults.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
