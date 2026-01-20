@@ -1,0 +1,576 @@
+<!DOCTYPE html>\n<html lang="vi">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>STOCK_NOTEBOOK_DOCUMENTATION</title>\n    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@400;500;700&family=Fira+Code&display=swap" rel="stylesheet">\n    <style>\n        :root { --bg: #fffce8; --text: #2d2d2d; --heading: #483c32; --accent: #268bd2; }\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body { font-family: "Libre Baskerville", serif; max-width: 760px; margin: 0 auto; padding: 2rem; background: var(--bg); color: var(--text); line-height: 1.8; }\n        h1 { font-family: "Playfair Display", serif; font-size: 2rem; color: var(--heading); text-align: center; margin: 2rem 0 1rem; }\n        h2 { font-family: "Playfair Display", serif; font-size: 1.5rem; color: var(--heading); text-align: center; margin: 3rem 0 2rem; }\n        h3 { font-family: "Playfair Display", serif; font-size: 1.2rem; color: var(--heading); margin: 2rem 0 1rem; }\n        p { margin: 1.5rem 0; text-align: justify; }\n        pre { background: #2d2d2d; padding: 1.5rem; border-radius: 4px; overflow-x: auto; margin: 2rem 0; }\n        code { font-family: "Fira Code", monospace; color: #f8f8f2; }\n        :not(pre) > code { background: #ebe5d8; color: var(--accent); padding: 0.2rem 0.5rem; border-radius: 3px; }\n        blockquote { border-left: 3px solid #927e5a; background: #fffef5; padding: 1rem 1.5rem; margin: 2rem 0; font-style: italic; }\n        ul, ol { padding-left: 2rem; margin: 1.5rem 0; }\n        li { margin: 0.5rem 0; }\n        a { color: var(--accent); text-decoration: none; }\n        .meta { text-align: center; color: #927e5a; font-style: italic; margin-bottom: 2rem; }\n        .back { display: inline-block; margin-bottom: 2rem; color: var(--accent); }\n    </style>\n</head>\n<body>\n    <a href="../index.html" class="back">← Về trang chủ</a>\n    <h1>STOCK_NOTEBOOK_DOCUMENTATION</h1>\n    <div class="meta">20 tháng 1, 2026 • 5 phút đọc</div>\n    <article>\n<h2>Tổng Quan</h2>
+<h3>Bài toán là gì?</h3>
+<ul>
+<li><strong>Input:</strong> Giá cổ phiếu hàng ngày từ 2019-2024 + các đặc tính thị trường</li>
+<li><strong>Output:</strong> Dự báo min/max return cho quý tiếp theo</li>
+<li><strong>Dữ liệu:</strong> 26 mã cổ phiếu Việt Nam (VNM, HPG, VHM, BID, v.v.)</li>
+<li><strong>Mục tiêu:</strong> Dự báo chính xác khoảng dao động giá để hỗ trợ quyết định đầu tư</li>
+</ul>
+<h3>Vì sao dùng Graph Neural Network?</h3>
+<ul>
+<li>Các cổ phiếu <strong>không độc lập</strong>, chúng liên kết qua:<ul>
+<li><strong>Ngành (sector):</strong> Các cổ phiếu cùng ngành (housing, industrial) thường di chuyển cùng nhau</li>
+<li><strong>Tương quan (correlation):</strong> Nếu VNM tăng thì HPG có xu hướng tăng</li>
+<li><strong>Luật kết hợp (association rules):</strong> Nếu BID ↑ thì VHM ↑ với xác suất cao</li>
+</ul>
+</li>
+<li><strong>GAT (Graph Attention Network):</strong> Học trọng số tự động cho từng liên kết</li>
+<li><strong>LSTM:</strong> Học thành phố hóa dự báo qua thời gian</li>
+</ul>
+<h3>Đọc File Target (Quarterly Min/Max)</h3>
+<pre><code class="language-python">df_target_raw = pd.read_csv(&#39;/content/min_max_return.csv&#39;, header=1)
+
+def clean_float(x):
+    try:
+        if isinstance(x, str):
+            x = x.replace(&#39;,&#39;, &#39;&#39;).replace(&#39;#DIV/0!&#39;, &#39;&#39;).strip()
+            if x == &#39;&#39; or x == &#39;-&#39;: return 0.0
+        return float(x)
+    except:
+        return 0.0
+
+df_target_raw = df_target_raw.map(clean_float)
+stock_codes = df_target_raw.columns[2:28].tolist()  # Lấy 26 mã cổ phiếu
+</code></pre>
+<p><strong>Điều gì đang xảy ra:</strong></p>
+<ol>
+<li><strong>Đọc file CSV</strong> chứa min/max return theo quý cho 26 mã<ul>
+<li>Cấu trúc: cột 2-27 = min return, cột 28-53 = max return</li>
+</ul>
+</li>
+<li><strong>Hàm <code>clean_float</code></strong> xử lý dữ liệu bẩn:<ul>
+<li>Loại bỏ dấu phẩy (ví dụ: &quot;1,000&quot; → &quot;1000&quot;)</li>
+<li>Xóa lỗi Excel (#DIV/0!)</li>
+<li>Chuyển string → float</li>
+</ul>
+</li>
+<li><strong>Áp dụng cho toàn bộ dataframe</strong> với <code>.map()</code></li>
+<li><strong>Trích xuất 26 mã</strong> từ tên cột</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre><code>✅ Đã tìm thấy 26 mã cổ phiếu.
+stock_codes = [&#39;VNM&#39;, &#39;HPG&#39;, &#39;VHM&#39;, &#39;BID&#39;, &#39;GAS&#39;, ...]
+</code></pre>
+<hr>
+<h3>Đọc File Daily Prices</h3>
+<p><strong>Chi tiết từng bước:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Bước</th>
+<th>Hành động</th>
+<th>Kết quả</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Đọc CSV giá đóng cửa hàng ngày</td>
+<td>DataFrame 6 năm × 26 cổ phiếu</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Chuyển cột &#39;Date&#39; → datetime</td>
+<td><code>2024-12-15</code> thay vì string</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Tách Year, Quarter</td>
+<td>Thêm 2 cột mới</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Làm sạch giá (xóa dấu phẩy)</td>
+<td><code>&quot;1,500&quot;</code> → <code>1500.0</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Forward fill + backward fill</strong></td>
+<td>Nếu ngày lễ missing → lấy ngày trước, nếu đầu missing → lấy ngày sau</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Ghép lại</td>
+<td>Dataframe: Date + Year + Quarter + 26 cột giá</td>
+</tr>
+</tbody></table>
+<p><strong>Output structure:</strong></p>
+<pre><code>   Year  Quarter    VNM      HPG      VHM    ...
+0  2019        1   100.0    450.0   1200.0   ...
+1  2019        1   102.0    451.0   1205.0   ...
+   ...
+</code></pre>
+<hr>
+<h3>Cell 4: Feature Engineering</h3>
+<p>Đây là <strong>phần CỰC KỲ QUAN TRỌNG</strong> để mô hình học tốt.</p>
+<pre><code class="language-python"># Tính Standard Deviation theo quý
+input_std = df_daily_merged.groupby([&#39;Year&#39;, &#39;Quarter&#39;]).std()[stock_codes]
+
+# Tính Mean (giá trung bình) theo quý
+input_mean = df_daily_merged.groupby([&#39;Year&#39;, &#39;Quarter&#39;]).mean()[stock_codes]
+
+# Tính return log theo quý
+def calc_quarter_log_return(x):
+    return np.log(x.iloc[-1] / x.iloc[0]) if x.iloc[0] &gt; 0 else 0
+
+input_ret = df_daily_merged.groupby([&#39;Year&#39;, &#39;Quarter&#39;]).agg(calc_quarter_log_return)[stock_codes]
+
+# Tính skewness (độ lệch của phân phối return)
+daily_returns = df_daily_merged[...].pct_change().dropna()
+feat_4 = daily_returns.skew().values  # Skewness
+</code></pre>
+<p><strong>4 Features mô hình sẽ nhận:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Tính toán</th>
+<th>Ý nghĩa</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>feat_1</strong></td>
+<td><code>log(std)</code></td>
+<td><strong>Biến động</strong> của giá trong quý. Cao = quý nhiều biến động, thấp = quý ổn định</td>
+</tr>
+<tr>
+<td><strong>feat_2</strong></td>
+<td><code>log(mean_price)</code></td>
+<td><strong>Mức giá</strong> trung bình. Giúp mô hình hiểu tỷ lệ</td>
+</tr>
+<tr>
+<td><strong>feat_3</strong></td>
+<td><code>log(price_end/price_start)</code></td>
+<td><strong>Return quý</strong> = % tăng/giảm trong quý</td>
+</tr>
+<tr>
+<td><strong>feat_4</strong></td>
+<td><code>skewness(daily_returns)</code></td>
+<td><strong>Tail behavior</strong> = độ lệch của phân phối. Dương = nhiều ngày tăng mạnh, Âm = nhiều ngày giảm mạnh</td>
+</tr>
+</tbody></table>
+<p><strong>Ví dụ thực tế:</strong></p>
+<pre><code>Quý 1/2024 (VNM):
+- std = 1.5 → log(1.5) ≈ 0.41  (quý này hơi biến động)
+- mean = 100 → log(100) ≈ 4.61 (mức giá trung bình)
+- return = 0.05 → log(1.05) ≈ 0.049 (tăng 5% trong quý)
+- skewness = 0.3 → hơi lệch dương (xu hướng tăng)
+</code></pre>
+<hr>
+<h3>Cell 5: Tạo Training &amp; Target Tensors</h3>
+<pre><code class="language-python">sorted_indices = sorted(input_std.index)  # [(2019,4), (2020,1), (2020,2), ...]
+
+x_all_list = []
+y_all_list = []
+valid_indices_map = []
+
+for y, q in sorted_indices:
+    # Lấy dòng target ứng với quý này
+    row = df_target_raw[(df_target_raw[&#39;Nam&#39;] == y) &amp; (df_target_raw[&#39;Quy&#39;] == q)]
+
+    if not row.empty and (y, q) in input_std.index:
+        # ===== INPUT (X) =====
+        feat_1 = np.log1p(input_std.loc[(y, q)].values)      # [26] values
+        feat_2 = np.log1p(input_mean.loc[(y, q)].values)     # [26]
+        feat_3 = input_ret.loc[(y, q)].values                # [26]
+        feat_4 = daily_returns.skew().values                 # [26]
+        
+        x_val = np.stack([feat_1, feat_2, feat_3, feat_4], axis=1)  # Shape: (26, 4)
+        x_all_list.append(x_val)
+        
+        # ===== TARGET (Y) =====
+        y_min = df_min.loc[row.index[0]].values    # Min return quý tiếp theo, [26]
+        y_max = df_max.loc[row.index[0]].values    # Max return quý tiếp theo, [26]
+        y_val = np.stack([y_min, y_max], axis=1)   # Shape: (26, 2)
+        y_all_list.append(y_val)
+        
+        valid_indices_map.append((y, q))
+
+# Chuyển list → numpy arrays → tensors
+X_temp = np.array(x_all_list)                          # Shape: (num_quarters, 26, 4)
+Y_full = torch.tensor(np.array(y_all_list), dtype=torch.float)  # Shape: (num_quarters, 26, 2)
+</code></pre>
+<p><strong>Cấu trúc dữ liệu:</strong></p>
+<pre><code>X_temp[0] = [[feat_1[0], feat_2[0], feat_3[0], feat_4[0]],   # Quý 1 - Cổ phiếu 1
+             [feat_1[1], feat_2[1], feat_3[1], feat_4[1]],   # Quý 1 - Cổ phiếu 2
+             ...
+             [feat_1[25], feat_2[25], feat_3[25], feat_4[25]]]  # Quý 1 - Cổ phiếu 26
+
+Y_full[0] = [[y_min[0], y_max[0]],      # Quý tiếp (dự báo) - Cổ phiếu 1
+             [y_min[1], y_max[1]],      # Quý tiếp - Cổ phiếu 2
+             ...
+             [y_min[25], y_max[25]]]    # Quý tiếp - Cổ phiếu 26
+</code></pre>
+<hr>
+<h3>Cell 6: Chuẩn Hóa Dữ Liệu (Crucial!)</h3>
+<pre><code class="language-python">split_idx = -4  # Lấy 4 quý cuối làm test
+
+X_train_raw = X_temp[:split_idx]        # Toàn bộ quý trừ 4 quý cuối
+X_test_raw = X_temp[split_idx:]         # 4 quý cuối
+
+# ===== BƯỚC CỰC KỲ QUAN TRỌNG: Fit scaler CHỈ trên TRAIN =====
+num_samples_train, num_nodes, num_feats = X_train_raw.shape
+X_train_reshaped = X_train_raw.reshape(-1, num_feats)  # Phẳng thành (samples*26, 4)
+
+scaler = StandardScaler()
+scaler.fit(X_train_reshaped)                          # Tính mean, std từ TRAIN ONLY
+X_train_scaled = scaler.transform(X_train_reshaped)   # Áp dụng vào TRAIN
+
+# ===== CÓ QUAN TRỌNG: Transform TEST bằng scaler từ TRAIN =====
+X_test_scaled = scaler.transform(X_test_raw.reshape(-1, num_feats))
+
+# Ghép lại
+X_full = torch.tensor(np.concatenate([X_train_scaled, X_test_scaled], axis=0), 
+                      dtype=torch.float)
+
+print(f&quot;Shape: {X_full.shape}&quot;)  # torch.Size([num_quarters, 26, 4])
+</code></pre>
+<p><strong>Tại sao việc này quan trọng?</strong></p>
+<p>❌ <strong>Sai:</strong> Fit scaler trên toàn bộ dữ liệu (train + test)</p>
+<ul>
+<li>Làm data leakage: scaler biết về future data</li>
+<li>Mô hình sẽ biết test data không thực tế</li>
+</ul>
+<p>✅ <strong>Đúng:</strong> Fit scaler CHỈ trên train</p>
+<ul>
+<li>Scaler chỉ dùng mean/std từ train</li>
+<li>Apply vào test bằng scaler này</li>
+<li>Mô hình không biết test data</li>
+</ul>
+<hr>
+<h2>Xây Dựng Graph (Mathematical Graph Construction)</h2>
+<p>mô hình hóa thị trường dưới dạng một đồ thị $G = (V, E)$.</p>
+<ul>
+<li><strong>Nodes ($V$):</strong> Tập hợp 26 mã cổ phiếu.</li>
+<li><strong>Edges ($E$):</strong> Tập hợp các mối quan hệ phụ thuộc giữa các cổ phiếu.</li>
+<li><strong>Mục tiêu:</strong> Xây dựng Ma trận kề (Adjacency Matrix) $A \in {0, 1}^{26 \times 26}$ để định hướng luồng thông tin trong mạng GAT.</li>
+</ul>
+<p>kết hợp hai loại cạnh: <strong>Static</strong> (Cố định) và <strong>Dynamic</strong> (Thay đổi theo thời gian).</p>
+<hr>
+<h3>Static Edges - Sector-based Topology</h3>
+<p><strong>Công thức toán học:</strong>
+Gọi $S(i)$ là phân loại ngành (Sector) của cổ phiếu $i$. Tập cạnh tĩnh $E_{static}$ được định nghĩa:
+$$ E_{static} = { (i, j) \mid S(i) = S(j), i \neq j } $$</p>
+<pre><code class="language-python"># Code implementation logic
+sector_map = {c: sector_raw[c] for c in stock_codes if c in sector_raw}
+# ... (tạo cạnh nếu cùng sector)
+</code></pre>
+<h3>Dynamic Edges - Data-Driven Dependencies</h3>
+<p>Mối quan hệ trên thị trường tài chính không cố định -&gt; xây dựng $E_{dynamic}^{(t)}$ cho từng cửa sổ thời gian $t$ dựa trên dữ liệu giao dịch thực tế</p>
+<h4>2. K-Nearest Neighbors (KNN) - Pearson Correlation</h4>
+<p>Phương pháp này đo lường sự đồng biến động tuyến tính (linear co-movement).</p>
+<ul>
+<li><strong>Pearson Correlation:</strong> Tính ma trận tương quan $C$ cho cửa sổ thời gian hiện tại:
+$$ C_{ij} = \frac{\text{cov}(R_i, R_j)}{\sigma_{R_i} \sigma_{R_j}} $$</li>
+<li><strong>Edge Selection:</strong> Cạnh $(i, j)$ được tạo nếu thỏa mãn 2 điều kiện:<ol>
+<li>$|C_{ij}| &gt; 0.5$ (Tương quan đủ mạnh)</li>
+<li>$j \in \text{Top-}k(i)$ (Thuộc nhóm $k$ láng giềng gần nhất của $i$)</li>
+</ol>
+</li>
+</ul>
+<p><strong>Tổng hợp Graph:</strong>
+Tập cạnh cuối cùng cho mỗi mẫu dữ liệu là hợp của các tập cạnh trên:
+$$ E_{final}^{(t)} = E_{static} \cup E_{KNN}^{(t)} $$</p>
+<p>Điều này đảm bảo đồ thị vừa có tính ổn định cấu trúc (Static), vừa thích ứng với biến động thị trường (Dynamic).</p>
+<hr>
+<h3>Sequence Construction - Tensor Formation</h3>
+<p>Quá trình này chuyển đổi dữ liệu bảng thành các Tensor 3 chiều để đưa vào mô hình Deep Learning.</p>
+<ul>
+<li><strong>Sliding Window:</strong> $W = 2$ (Quý).</li>
+<li><strong>Input Tensor ($X$):</strong> Với mỗi bước thời gian $t$, ta lấy cửa sổ $[t, t+1]$.<ul>
+<li>Shape: $(Batch, Sequence, Nodes, Features)$</li>
+</ul>
+</li>
+<li><strong>Graph Structure ($A$):</strong> Tại mỗi bước $t$, ta tính lại $E_{final}^{(t)}$ dựa trên dữ liệu của cửa sổ đó.</li>
+</ul>
+<p>Kết quả là một danh sách các tuple $(X_{seq}, Y_{target}, A_{adj})$, trong đó $A_{adj}$ thay đổi linh hoạt theo từng mẫu dữ liệu, cho phép GAT học được cấu trúc động của thị trường.</p>
+<hr>
+<h2>3️⃣ Model Architecture (GAT-LSTM)</h2>
+<h3>Định nghĩa Model</h3>
+<pre><code class="language-python">class StockGAT_LSTM(torch.nn.Module):
+    def __init__(self, num_nodes, in_features=4, gnn_hidden=128, lstm_hidden=256, heads=2):
+        super(StockGAT_LSTM, self).__init__()
+        
+        # ===== PHẦN 1: GAT (Graph Attenion) =====
+        # Input: [num_nodes=26, in_features=4]
+        # Output: [num_nodes=26, gnn_hidden*heads=256]
+        self.conv1 = GATConv(in_features, gnn_hidden, heads=heads, dropout=0.6)
+        
+        # ===== PHẦN 2: LSTM =====
+        # Input: [num_nodes=26, seq_len=2, features=256]
+        # Output: hidden state cuối [num_nodes=26, lstm_hidden=256]
+        self.lstm = torch.nn.LSTM(input_size=gnn_hidden*heads, 
+                                   hidden_size=lstm_hidden, 
+                                   batch_first=True, 
+                                   dropout=0.2)
+        
+        # ===== PHẦN 3: Linear (Regression Head) =====
+        # Input: [num_nodes=26, lstm_hidden=256]
+        # Output: [num_nodes=26, 2] (min, max)
+        self.linear = torch.nn.Linear(lstm_hidden, 2)
+
+    def forward(self, x_seq, edge_index):
+        &quot;&quot;&quot;
+        Args:
+            x_seq:      [seq_len=2, num_nodes=26, in_features=4]
+            edge_index: [2, num_edges]
+        
+        Returns:
+            out: [num_nodes=26, 2] (predicted min, max)
+        &quot;&quot;&quot;
+        seq_len = x_seq.size(0)  # 2
+        gnn_out_list = []
+        
+        # ===== Bước 1: Đưa từng quý qua GAT =====
+        for t in range(seq_len):  # t = 0, 1
+            xt = x_seq[t]                      # Shape: [26, 4]
+            
+            # GAT: học trọng số cạnh, aggregate hàng xóm
+            out = self.conv1(xt, edge_index)   # [26, 4] → [26, 256]
+            out = F.elu(out)                   # Activation
+            
+            gnn_out_list.append(out)
+        
+        # ===== Bước 2: Stack để tạo chuỗi =====
+        spatial_seq = torch.stack(gnn_out_list, dim=0)  # [2, 26, 256]
+        
+        # ===== Bước 3: Đưa qua LSTM =====
+        # LSTM expects: [batch_size, seq_len, features]
+        lstm_input = spatial_seq.permute(1, 0, 2)      # [26, 2, 256]
+        lstm_out, (h_n, c_n) = self.lstm(lstm_input)   # h_n: [1, 26, 256]
+        
+        # ===== Bước 4: Lấy hidden state cuối cùng =====
+        final_embed = h_n.squeeze(0)                    # [26, 256]
+        
+        # ===== Bước 5: Dự báo min/max =====
+        out = self.linear(final_embed)                  # [26, 2]
+        
+        return out  # [26, 2]
+</code></pre>
+<p><strong>Sơ đồ kiến trúc:</strong></p>
+<pre><code>Input: 2 quý x 26 cổ phiếu x 4 features
+  ↓
+[Quý 1] → [GAT Layer] → [26, 256]
+[Quý 2] → [GAT Layer] → [26, 256]
+  ↓ Stack
+[2 quý, 26 nodes, 256 features]
+  ↓
+[LSTM Cell] → Học pattern quá thời gian
+  ↓ Hidden state
+[26, 256]
+  ↓
+[Linear Layer] → Dự báo
+  ↓
+Output: [26 cổ phiếu, 2 giá trị (min, max)]
+</code></pre>
+<p><strong>Chi tiết từng layer:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Input</th>
+<th>Output</th>
+<th>Công dụng</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GAT</td>
+<td>[26, 4]</td>
+<td>[26, 256]</td>
+<td>Học trọng số cạnh, aggregate hàng xóm</td>
+</tr>
+<tr>
+<td>LSTM</td>
+<td>[26, 2, 256]</td>
+<td>[26, 256]</td>
+<td>Học temporal pattern</td>
+</tr>
+<tr>
+<td>Linear</td>
+<td>[26, 256]</td>
+<td>[26, 2]</td>
+<td>Dự báo min/max</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>4️⃣ Training Loop</h2>
+<pre><code class="language-python">torch.manual_seed(42) 
+
+model = StockGAT_LSTM(num_nodes=26, in_features=4, 
+                      gnn_hidden=32, lstm_hidden=128, heads=2)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=150)
+
+split_idx = -4  # Chia dữ liệu: 4 quý cuối = test
+train_seqs = sequences[:split_idx]
+test_seqs = sequences[split_idx:]
+</code></pre>
+<h3>Training Loop</h3>
+<pre><code class="language-python">best_loss, patience = float(&#39;inf&#39;), 0
+loss_history = []
+model.train()
+
+for epoch in range(200):
+    epoch_loss = 0.0
+    
+    for x_seq, y_target, sample_edge_index in train_seqs:
+        # ===== Forward pass =====
+        optimizer.zero_grad()                              # Reset gradient
+        out = model(x_seq, sample_edge_index)              # [26, 2]
+        
+        # ===== Tính loss =====
+        # Center loss: dự báo mean(min, max) = (pred_min + pred_max)/2
+        loss_c = criterion_center(out.mean(dim=1), y_target.mean(dim=1))
+        
+        # Range loss: dự báo range = max - min
+        pred_range = out[:, 1] - out[:, 0]
+        targ_range = y_target[:, 1] - y_target[:, 0]
+        
+        loss_r = criterion_range(pred_range, targ_range)
+        # Phạt nếu dự báo range quá bé (Range Compression)
+        loss_r = loss_r + 2.0 * torch.relu(targ_range - pred_range).mean()
+        # Phạt nếu range âm
+        loss_r = loss_r + 0.5 * torch.relu(-pred_range).mean()
+        
+        # Kết hợp 2 loss
+        loss = alpha_c * loss_c + alpha_r * loss_r
+        
+        # ===== Backward pass =====
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.5)  # Tránh gradient explosion
+        optimizer.step()
+        
+        epoch_loss += loss.item()
+    
+    # ===== Epoch statistics =====
+    avg_loss = epoch_loss / len(train_seqs)
+    loss_history.append(avg_loss)
+    scheduler.step()
+    
+    # ===== Early stopping =====
+    if avg_loss &lt; best_loss - 1e-5:
+        best_loss = avg_loss
+        patience = 0
+    else:
+        patience += 1
+    
+    if (epoch + 1) % 25 == 0:
+        print(f&quot;E{epoch+1:3d} | Loss: {avg_loss:.5f}&quot;)
+    
+    if patience &gt;= 15:
+        print(f&quot;Early stop @ epoch {epoch+1}&quot;)
+        break
+</code></pre>
+<hr>
+<h3>1. <code>loss_mse</code> (Mean Squared Error - Độ chính xác tuyệt đối)</h3>
+<ul>
+<li><strong>Ý nghĩa toán học:</strong> Tính trung bình bình phương sai số giữa giá trị dự báo và giá trị thực tế.</li>
+<li><strong>Mục đích:</strong> Đảm bảo <strong>độ chính xác về mặt con số</strong>, ép mô hình dự đoán ra các con số <code>Min Return</code> và <code>Max Return</code> càng gần với thực tế càng tốt.</li>
+</ul>
+<h3>2. <code>loss_corr_min</code> (Pearson Correlation Loss - Bắt xu hướng)</h3>
+<ul>
+<li><strong>Ý nghĩa:</strong> Hệ số tương quan Pearson đo lường mức độ biến thiên cùng chiều của hai biến số (từ -1 đến 1).<ul>
+<li>Nếu <code>pred</code> tăng mà <code>true</code> cũng tăng →→ Correlation cao →→ Loss thấp.</li>
+<li>Nó <strong>không quan tâm đến độ lớn</strong> (scale) mà chỉ quan tâm đến <strong>hình dáng đồ thị</strong> (shape).</li>
+</ul>
+</li>
+<li><strong>Tại sao chỉ dùng cho <code>Min Return</code>?</strong> Trong đoạn code, bạn viết <code>correlation_loss(pred_min, true_min)</code>. Điều này ám chỉ bạn đặc biệt quan tâm đến việc <strong>bắt đúng xu hướng rủi ro</strong> (khi nào thị trường sập, khi nào thị trường đáy) hơn là xu hướng lợi nhuận tối đa.</li>
+<li><strong>Mục đích:</strong> Giúp mô hình học được &quot;Trend&quot;. Ví dụ: Dù dự báo sai số liệu (lệch 5%), nhưng nếu thị trường giảm mà mô hình cũng báo giảm thì vẫn được coi là tốt.</li>
+</ul>
+<h3>3. <code>risk_penalty</code> (Safety Loss - Phạt sự lạc quan thái quá)</h3>
+<ul>
+<li><strong>Cơ chế hoạt động:</strong><ul>
+<li><code>pred_min</code> là mức sụt giảm dự báo (ví dụ: -5%).</li>
+<li><code>true_min</code> là mức sụt giảm thực tế (ví dụ: -10%).</li>
+<li>Nếu <code>pred_min &gt; true_min</code> (Dự báo -5% nhưng thực tế sập -10%): Bạn đã <strong>quá lạc quan</strong>, đánh giá thấp rủi ro →→ <code>pred - true &gt; 0</code> →→ <code>ReLU</code> giữ lại giá trị này →→ <strong>Bị phạt (Loss tăng)</strong>.</li>
+<li>Nếu <code>pred_min &lt; true_min</code> (Dự báo -15% nhưng thực tế chỉ giảm -10%): Bạn <strong>thận trọng/bi quan</strong> →→ <code>pred - true &lt; 0</code> →→ <code>ReLU</code> biến thành 0 →→ <strong>Không bị phạt</strong>.</li>
+</ul>
+</li>
+<li><strong>Mục đích:</strong> Đây là cơ chế <strong>An toàn (Safety)</strong>. Trong đầu tư, việc đánh giá thấp rủi ro (Underestimating Risk) nguy hiểm hơn nhiều so với việc đánh giá quá cao rủi ro. Hàm này ép mô hình thà dự báo &quot;xấu hơn thực tế&quot; còn hơn là &quot;tốt hơn thực tế&quot;.</li>
+</ul>
+<h3>4. Tổng hợp Loss (Weighted Sum)</h3>
+<ul>
+<li><strong>50% (MSE):</strong> Vẫn ưu tiên độ chính xác của con số nhất.</li>
+<li><strong>45% (Correlation):</strong> Rất coi trọng việc bắt đúng Trend (xu hướng tăng/giảm). Đây là tỷ trọng rất cao, biến mô hình thành dạng <strong>Trend-Following</strong>.</li>
+<li><strong>5% (Risk Penalty):</strong> Một chút gia vị để nhắc nhở mô hình &quot;hãy thận trọng, đừng lạc quan quá&quot;.</li>
+</ul>
+<hr>
+<h2>Evaluation &amp; Visualization</h2>
+<h3>Cell 13: Đánh giá mô hình</h3>
+<pre><code class="language-python">model.eval()
+preds, targets = [], []
+
+with torch.no_grad():
+    for x_seq, y_target, sample_edge_index in test_seqs:
+        out = model(x_seq, sample_edge_index)
+        preds.append(out.numpy())
+        targets.append(y_target.numpy())
+
+# ===== Metric 1: Range Compression =====
+pred_ranges = []
+true_ranges = []
+
+for pred, target in zip(preds, targets):
+    pred_range = (pred[:, 1] - pred[:, 0]).mean()  # Average range
+    true_range = (target[:, 1] - target[:, 0]).mean()
+    
+    pred_ranges.append(pred_range)
+    true_ranges.append(true_range)
+
+range_ratio = (np.array(pred_ranges) / (np.array(true_ranges) + 1e-8)).mean()
+range_bias = (np.array(pred_ranges) - np.array(true_ranges)).mean()
+
+print(f&quot;\n📊 Range Statistics:&quot;)
+print(f&quot;   True Range (mean)  : {np.array(true_ranges).mean():.6f}&quot;)
+print(f&quot;   Pred Range (mean)  : {np.array(pred_ranges).mean():.6f}&quot;)
+print(f&quot;   Range Ratio        : {range_ratio:.4f} {&#39;❌ TOO NARROW&#39; if range_ratio &lt; 0.95 else &#39;✅ OK&#39;}&quot;)
+print(f&quot;   Range Bias         : {range_bias:.6f}&quot;)
+
+# ===== Metric 2: Direction Accuracy =====
+pred_dir_max = np.sign(np.array([p[:, 1] for p in preds]))
+true_dir_max = np.sign(np.array([t[:, 1] for t in targets]))
+
+direction_accuracy = (pred_dir_max == true_dir_max).mean() * 100
+print(f&quot;\n📈 Direction Accuracy (Max): {direction_accuracy:.2f}%&quot;)
+
+# ===== Metric 3: Error Metrics =====
+err_max = np.array([p[:, 1] for p in preds]) - np.array([t[:, 1] for t in targets])
+mae_max = np.abs(err_max).mean()
+mse_max = (err_max ** 2).mean()
+rmse_max = np.sqrt(mse_max)
+
+print(f&quot;\n❌ Error Metrics (Max):&quot;)
+print(f&quot;   MAE  : {mae_max:.6f}&quot;)
+print(f&quot;   RMSE : {rmse_max:.6f}&quot;)
+</code></pre>
+<p><strong>Các metric đánh giá:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Công thức</th>
+<th>Ý nghĩa</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Range Ratio</strong></td>
+<td>pred_range / true_range</td>
+<td>Nếu = 1.0: perfect. &lt; 1.0: under-predict. &gt; 1.0: over-predict</td>
+</tr>
+<tr>
+<td><strong>Direction Accuracy</strong></td>
+<td>% lần dự báo đúng chiều (↑ vs ↓)</td>
+<td>Dù sai giá, dự báo đúng hướng cũng tốt</td>
+</tr>
+<tr>
+<td><strong>MAE</strong></td>
+<td>Mean Absolute Error</td>
+<td>Sai lệch trung bình tuyệt đối</td>
+</tr>
+<tr>
+<td><strong>RMSE</strong></td>
+<td>Root Mean Squared Error</td>
+<td>Nhấn mạnh sai số lớn hơn MAE</td>
+</tr>
+</tbody></table>
+\n    </article>\n    <footer style="margin-top: 4rem; padding-top: 2rem; border-top: 2px solid #d3c6a6; text-align: center; color: #927e5a;">\n        <p>© 2026 My Blog</p>\n    </footer>\n</body>\n</html>
